@@ -41,7 +41,7 @@ class AppDataHandler:
         now = pendulum.now()
         floor_date = pendulum.datetime(year=now.year, month=now.month, day=now.day, tz=now.tz)
         game_index = 0
-        for file in reversed(sorted(match_summary_files)):
+        for file in reversed(sorted(match_summary_files)): # Most recent games = biggest ID
             with open(data_path / file, 'r') as f:
                 match_summary_data = json.load(f)
 
