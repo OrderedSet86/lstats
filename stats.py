@@ -15,7 +15,7 @@ from src.state import AppDataHandler
 
 app = Dash(
     __name__,
-    external_stylesheets=[dbc.themes.CYBORG],
+    external_stylesheets=[dbc.themes.SLATE]
 )
 
 dh = AppDataHandler()
@@ -76,40 +76,8 @@ fig_vsm.update_layout(yaxis_range=[0, 1.1*vsm.max()])
 fig_vsm.update_layout(xaxis_range=[-7.5, 0.5])
 
 
-# app.layout = html.Div([
-#     html.H1(children='League Stats'),
-
-#     # html.Div(children='''
-#     #     Dash: A web application framework for your data.
-#     # '''),
-
-#     dbc.Row([
-#         dbc.Col(
-#             html.Div(
-#                 dcc.Graph(
-#                     id='cspm',
-#                     figure=fig_cspm
-#                 ),
-#             )
-#         ),
-#         dbc.Col(
-#             html.Div(
-#                 dcc.Graph(
-#                     id='gpm',
-#                     figure=fig_gpm
-#                 ),
-#             )
-#         )
-#     ]),
-#     dbc.Row(
-#         dcc.Graph(
-#             id='vsm',
-#             figure=fig_vsm
-#         ),
-#     ),
-# ])
-
-# Iris bar figure
+# Following two functions were modified from https://stackoverflow.com/a/63602391/7247528
+# Figure wrapper
 def drawFigure(fig):
     return  html.Div([
         dbc.Card(
@@ -140,9 +108,8 @@ def drawText(text):
         ),
     ])
 
-# Build App
-app = Dash(external_stylesheets=[dbc.themes.SLATE])
 
+# Build App
 app.layout = html.Div([
     dbc.Card(
         dbc.CardBody([
@@ -164,13 +131,12 @@ app.layout = html.Div([
             dbc.Row([
                 dbc.Col([
                     drawFigure(fig_vsm)
-                ], width=12),
+                ], width=6),
             ], align='center'),      
         ]), color = 'dark'
     )
 ])
 
 # Run app and display result inline in the notebook
-app.run_server()
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server()
