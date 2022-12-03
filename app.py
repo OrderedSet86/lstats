@@ -19,7 +19,7 @@ standardTheming = {
 }
 
 
-def constructValueLineChart(value, y_axis, title):
+def constructValueLineChart(value, y_axis, title, challenger_stat=None, silver_stat=None):
     global dh
     fig = px.line(
         dh.match_summary_df,
@@ -32,7 +32,25 @@ def constructValueLineChart(value, y_axis, title):
         title=title,
         **standardTheming
     )
-    fig.update_layout(yaxis_range=[0.9*value.min(), 1.1*value.max()])
+
+    if challenger_stat is not None:
+        maxval = max(value.max(), challenger_stat)    
+    else:
+        maxval = value.max()
+
+    if silver_stat is not None:
+        minval = min(value.min(), silver_stat)
+    else:
+        minval = value.min()
+    
+
+    fig.update_layout(yaxis_range=[0.9*minval, 1.1*maxval])
+
+    if challenger_stat is not None:
+        fig.add_hline(challenger_stat, line_color='yellow')
+    if silver_stat is not None:
+        fig.add_hline(silver_stat, line_color='silver')
+
     return fig
 
 
@@ -42,8 +60,10 @@ fig_cspm = constructValueLineChart(
     cspm,
     'CS/Minute',
     'CS Per Minute',
+    challenger_stat=7.1,
+    silver_stat=5.5,
 )
-fig_cspm.update_layout(yaxis_range=[4, 10])
+fig_cspm.update_layout(yaxis_range=[4.5, 8])
 
 # Gold/Minute
 gpm = dh.match_summary_df['gold'] / (dh.match_summary_df['length'] / 60)
@@ -59,6 +79,8 @@ fig_vsm = constructValueLineChart(
     vsm,
     'Vision Score/Hour',
     'Vision Score Per Game',
+    challenger_stat=44.8,
+    silver_stat=35.2,
 )
 
 # Damage/Gold
@@ -67,6 +89,8 @@ fig_dpg = constructValueLineChart(
     dpg,
     'Damage/Gold',
     'Damage Per Gold',
+    challenger_stat=1.74,
+    silver_stat=1.77,
 )
 
 # KDA Ratio
@@ -75,6 +99,8 @@ fig_kda = constructValueLineChart(
     kda,
     'KDA',
     'KDA Ratio',
+    challenger_stat=2.55,
+    silver_stat=2.57,
 )
 
 # Kill Participation
@@ -83,6 +109,8 @@ fig_kp = constructValueLineChart(
     kp,
     'Kill Participation %',
     'Kill Participation',
+    challenger_stat=48.1,
+    silver_stat=46.2,
 )
 
 # Damage Per Death
@@ -91,6 +119,8 @@ fig_dpd = constructValueLineChart(
     dpd,
     'Damage/Death',
     'Damage Per Death',
+    challenger_stat=3863,
+    silver_stat=3693,
 )
 
 # Damage Share
@@ -99,6 +129,8 @@ fig_dsh = constructValueLineChart(
     dsh,
     'Damage Share %',
     'Damage Share',
+    challenger_stat=22.8,
+    silver_stat=21.0,
 )
 
 

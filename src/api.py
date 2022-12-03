@@ -129,9 +129,3 @@ if __name__ == '__main__':
             if match_status == 200:
                 with open(f'data/historical/proto/{match}.json', 'w') as f:
                     json.dump(md, f)
-    # print(status)
-    # print(rj)
-
-# now = pendulum.now()
-# print(now.timestamp())
-# print((now - pendulum.duration(days=2)).timestamp())
