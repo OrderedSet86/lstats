@@ -26,6 +26,7 @@ class AppDataHandler:
     def _loadHistoricalData(self):
         data_path = Path('data/historical/proto')
         match_summary_files = os.listdir(data_path)
+        match_summary_files.sort() # Now sorted oldest -> newest
 
         cols = [
             'game_index',
@@ -34,14 +35,21 @@ class AppDataHandler:
             'cs',
             'gold',
             'champion',
-            'vision_score'
+            'vision_score',
+            'lane',
+            'dmg_champions',
+            'kills',
+            'deaths',
+            'assists',
+            'total_team_kills',
+            'total_team_dmg_champions',
         ]
         self.match_summary_df = pd.DataFrame(columns=cols)
 
         now = pendulum.now()
         floor_date = pendulum.datetime(year=now.year, month=now.month, day=now.day, tz=now.tz)
-        game_index = 0
-        for file in reversed(sorted(match_summary_files)): # Most recent games = biggest ID
+        game_index = -len(match_summary_files) + 1
+        for file in match_summary_files: # Most recent games = biggest ID
             with open(data_path / file, 'r') as f:
                 match_summary_data = json.load(f)
 
@@ -84,6 +92,42 @@ class AppDataHandler:
             # vision score per game
             vision_score = participant_data['visionScore']
             to_write.append(vision_score)
+
+            # lane
+            lane = participant_data['lane']
+            to_write.append(lane)
+
+            # total damage to champions
+            dmg_champions = (
+                participant_data['physicalDamageDealtToChampions'] +
+                participant_data['magicDamageDealtToChampions'] +
+                participant_data['trueDamageDealtToChampions']
+            )
+            to_write.append(dmg_champions)
+
+            # kda
+            kills = participant_data['kills']
+            deaths = participant_data['deaths']
+            assists = participant_data['assists']
+            to_write.extend([kills, deaths, assists])
+
+            # Anything involving other players
+            own_team = participant_data['teamId']
+            total_team_kills = 0
+            total_team_damage = 0
+            for player_data in match_summary_data['info']['participants']:
+                if player_data['teamId'] == own_team:
+                    # total team kills
+                    total_team_kills += player_data['kills']
+
+                    # total team damage to champions
+                    total_team_damage += (
+                        player_data['physicalDamageDealtToChampions'] +
+                        player_data['magicDamageDealtToChampions'] +
+                        player_data['trueDamageDealtToChampions']
+                    )
+
+            to_write.extend([total_team_kills, total_team_damage])
 
             self.match_summary_df.loc[index] = to_write
 
