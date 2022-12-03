@@ -1,4 +1,5 @@
 import json
+import os
 from collections import deque
 from time import sleep
 
@@ -6,6 +7,8 @@ import pendulum
 import requests
 import yaml
 
+
+# Add more from here: https://developer.riotgames.com/apis
 
 # Singlethreaded for now - throughput is unlikely to be a problem and rate limit is pretty low anyway
 class ApiHandler:
@@ -65,6 +68,7 @@ class ApiHandler:
 
         if status == 200:
             res_json = json.loads(response.text)
+            self.receiveTimesCache.append(pendulum.now())
             return (status, res_json)
         else:
             # FIXME: Doing this now to avoid errors
@@ -111,9 +115,15 @@ class RiotDataHandler:
 
 if __name__ == '__main__':
     rd = RiotDataHandler()
+
+    existing_data = [x[:-5] for x in os.listdir('data/historical/proto')]
+
     status, rj = rd.getMatchHistory()
     if status == 200:
         for match in rj:
+            if match in existing_data:
+                continue
+
             match_status, md = rd.getMatchData(match)
             print(match_status)
             if match_status == 200:

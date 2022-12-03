@@ -1,73 +1,176 @@
 import json
+import math
 import os
 from pathlib import Path
 
-import yaml
 import pandas as pd
+import pendulum
 import plotly.express as px
+import yaml
+import dash_bootstrap_components as dbc
+from dash import Dash, html, dcc
+
+from src.state import AppDataHandler
 
 
-with open('data/private.yaml', 'r') as f:
-    user_data = yaml.safe_load(f)
-puuid = user_data['puuid']
-
-
-cspm_all = []
-gpm_all = []
-base_dir = Path('data/historical/proto')
-for match in os.listdir(base_dir):
-    with open(base_dir / match, 'r') as f:
-        data = json.load(f)
-
-    target_idx = data['metadata']['participants'].index(puuid)
-    participant_data = data['info']['participants'][target_idx]
-
-    iprint = lambda x: print('    ', x)
-
-    # Game data
-    length_played_in_s = participant_data['timePlayed'] # Note - this excludes DCs
-    length_played_in_m = length_played_in_s/60
-
-    print(match[:-5])
-
-    iprint(f'{participant_data["championName"]}')
-
-    kills = participant_data["kills"]
-    deaths = participant_data["deaths"]
-    assists = participant_data["assists"]
-    iprint(''.join([
-        'KDA: ',
-        f'{kills}/'
-        f'{deaths}/'
-        f'{assists} '
-        f'({round((kills + assists)/deaths, 2)})'
-    ]))
-
-    cspm = participant_data["totalMinionsKilled"]/(length_played_in_m)
-    cspm_all.append(cspm)
-    iprint(''.join([
-        'CS/minute: ',
-        f'{round(cspm, 1)}'
-    ]))
-
-    gpm = participant_data["goldEarned"]/(length_played_in_m)
-    gpm_all.append(gpm)
-    iprint(''.join([
-        'Gold/minute: ',
-        f'{int(round(gpm, 0))}'
-    ]))
-
-dt = {
-    'game_index': list(range(len(cspm_all))),
-    'cspm': cspm_all,
-    'gpm': gpm_all,
-}
-df = pd.DataFrame(dt)
-fig = px.line(
-    df,
-    x='game_index',
-    y='cspm',
-    title='CS Improvements',
+app = Dash(
+    __name__,
+    external_stylesheets=[dbc.themes.CYBORG],
 )
-fig.update_layout(yaxis_range=[4, 10])
-fig.show()
+
+dh = AppDataHandler()
+
+### FIGURES
+
+standardTheming = {
+    'template': 'plotly_dark'
+}
+
+
+# CS/Minute
+cspm = dh.match_summary_df['cs'] / (dh.match_summary_df['length'] / 60)
+fig_cspm = px.scatter(
+    dh.match_summary_df,
+    x='negative_day_index',
+    y=cspm,
+    labels={
+        'y': 'CS/minute',
+        'negative_day_index': 'Days ago',
+    },
+    title='CS Per Game',
+    **standardTheming
+)
+fig_cspm.update_layout(yaxis_range=[4, 10])
+fig_cspm.update_layout(xaxis_range=[-7.5, 0.5])
+
+# Gold/Minute
+gpm = dh.match_summary_df['gold'] / (dh.match_summary_df['length'] / 60)
+fig_gpm = px.scatter(
+    dh.match_summary_df,
+    x='negative_day_index',
+    y=gpm,
+    labels={
+        'y': 'Gold/minute',
+        'negative_day_index': 'Days ago',
+    },
+    title='Gold Per Game',
+    **standardTheming
+)
+fig_gpm.update_layout(yaxis_range=[0, 1.1*gpm.max()])
+fig_gpm.update_layout(xaxis_range=[-7.5, 0.5])
+
+# Vision Score/Minute
+vsm = dh.match_summary_df['vision_score'] / (dh.match_summary_df['length'] / 3600)
+fig_vsm = px.scatter(
+    dh.match_summary_df,
+    x='negative_day_index',
+    y=vsm,
+    labels={
+        'y': 'Vision Score/Hour',
+        'negative_day_index': 'Days ago',
+    },
+    title='Vision Per Game',
+    **standardTheming
+)
+fig_vsm.update_layout(yaxis_range=[0, 1.1*vsm.max()])
+fig_vsm.update_layout(xaxis_range=[-7.5, 0.5])
+
+
+# app.layout = html.Div([
+#     html.H1(children='League Stats'),
+
+#     # html.Div(children='''
+#     #     Dash: A web application framework for your data.
+#     # '''),
+
+#     dbc.Row([
+#         dbc.Col(
+#             html.Div(
+#                 dcc.Graph(
+#                     id='cspm',
+#                     figure=fig_cspm
+#                 ),
+#             )
+#         ),
+#         dbc.Col(
+#             html.Div(
+#                 dcc.Graph(
+#                     id='gpm',
+#                     figure=fig_gpm
+#                 ),
+#             )
+#         )
+#     ]),
+#     dbc.Row(
+#         dcc.Graph(
+#             id='vsm',
+#             figure=fig_vsm
+#         ),
+#     ),
+# ])
+
+# Iris bar figure
+def drawFigure(fig):
+    return  html.Div([
+        dbc.Card(
+            dbc.CardBody([
+                dcc.Graph(
+                    figure=fig.update_layout(
+                        template='plotly_dark',
+                        plot_bgcolor= 'rgba(0, 0, 0, 0)',
+                        paper_bgcolor= 'rgba(0, 0, 0, 0)',
+                    ),
+                    config={
+                        'displayModeBar': False
+                    }
+                )
+            ])
+        ),  
+    ])
+
+# Text field
+def drawText(text):
+    return html.Div([
+        dbc.Card(
+            dbc.CardBody([
+                html.Div([
+                    html.H2(text),
+                ], style={'textAlign': 'center'}) 
+            ])
+        ),
+    ])
+
+# Build App
+app = Dash(external_stylesheets=[dbc.themes.SLATE])
+
+app.layout = html.Div([
+    dbc.Card(
+        dbc.CardBody([
+            dbc.Row([
+                dbc.Col([
+                    drawText('League Stats')
+                ], width=3),
+            ], align='center'), 
+            html.Br(),
+            dbc.Row([
+                dbc.Col([
+                    drawFigure(fig_cspm)
+                ], width=6),
+                dbc.Col([
+                    drawFigure(fig_gpm)
+                ], width=6),
+            ], align='center'), 
+            html.Br(),
+            dbc.Row([
+                dbc.Col([
+                    drawFigure(fig_vsm)
+                ], width=12),
+            ], align='center'),      
+        ]), color = 'dark'
+    )
+])
+
+# Run app and display result inline in the notebook
+app.run_server()
+if __name__ == '__main__':
+    app.run_server(debug=True)
