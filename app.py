@@ -10,7 +10,9 @@ app = Dash(
     external_stylesheets=[dbc.themes.SLATE]
 )
 
-dh = AppDataHandler()
+dh = AppDataHandler(
+    role='CARRY',
+)
 
 ### FIGURES
 
@@ -21,15 +23,20 @@ standardTheming = {
 
 def constructValueLineChart(value, y_axis, title, challenger_stat=None, silver_stat=None):
     global dh
-    fig = px.line(
+    fig = px.scatter(
         dh.match_summary_df,
         x='game_index',
         y=value,
         labels={
             'y': y_axis,
-            'game_index': 'Games Ago',
+            'game_index': 'Game Index',
         },
         title=title,
+        trendline='lowess',
+        trendline_options={
+            'frac': 0.1
+        },
+        trendline_color_override='white',
         **standardTheming
     )
 
@@ -45,6 +52,12 @@ def constructValueLineChart(value, y_axis, title, challenger_stat=None, silver_s
     
 
     fig.update_layout(yaxis_range=[0.9*minval, 1.1*maxval])
+    fig.update_layout(margin=dict(
+        l=0,
+        r=0,
+        t=75,
+        b=0,
+    ))
 
     if challenger_stat is not None:
         fig.add_hline(challenger_stat, line_color='yellow')
@@ -52,6 +65,9 @@ def constructValueLineChart(value, y_axis, title, challenger_stat=None, silver_s
         fig.add_hline(silver_stat, line_color='silver')
 
     return fig
+
+
+dh.loadSummonersRiftData()
 
 
 # CS/Minute
@@ -63,7 +79,7 @@ fig_cspm = constructValueLineChart(
     challenger_stat=7.1,
     silver_stat=5.5,
 )
-fig_cspm.update_layout(yaxis_range=[4.5, 8])
+# fig_cspm.update_layout(yaxis_range=[4.5, 10])
 
 # Gold/Minute
 gpm = dh.match_summary_df['gold'] / (dh.match_summary_df['length'] / 60)
@@ -94,7 +110,7 @@ fig_dpg = constructValueLineChart(
 )
 
 # KDA Ratio
-kda = (dh.match_summary_df['kills'] + dh.match_summary_df['assists']) / dh.match_summary_df['deaths']
+kda = (dh.match_summary_df['kills'] + dh.match_summary_df['assists']) / dh.match_summary_df['deaths'].replace(0, 1)
 fig_kda = constructValueLineChart(
     kda,
     'KDA',
@@ -102,6 +118,7 @@ fig_kda = constructValueLineChart(
     challenger_stat=2.55,
     silver_stat=2.57,
 )
+fig_kda.update_layout(yaxis_range=[0, 5])
 
 # Kill Participation
 kp = (dh.match_summary_df['kills'] + dh.match_summary_df['assists']) / dh.match_summary_df['total_team_kills'] * 100
@@ -114,7 +131,7 @@ fig_kp = constructValueLineChart(
 )
 
 # Damage Per Death
-dpd = dh.match_summary_df['dmg_champions'] / dh.match_summary_df['deaths']
+dpd = dh.match_summary_df['dmg_champions'] / dh.match_summary_df['deaths'].replace(0, 1)
 fig_dpd = constructValueLineChart(
     dpd,
     'Damage/Death',
@@ -122,6 +139,7 @@ fig_dpd = constructValueLineChart(
     challenger_stat=3863,
     silver_stat=3693,
 )
+fig_dpd.update_layout(yaxis_range=[0, 15_000])
 
 # Damage Share
 dsh = dh.match_summary_df['dmg_champions'] / dh.match_summary_df['total_team_dmg_champions'] * 100
@@ -132,6 +150,28 @@ fig_dsh = constructValueLineChart(
     challenger_stat=22.8,
     silver_stat=21.0,
 )
+
+# Gold Diff / 15min
+gd15 = dh.match_summary_df['gd15']
+fig_gd15 = constructValueLineChart(
+    gd15,
+    'Gold Difference',
+    'Gold Difference @ 15 Minutes',
+    challenger_stat=144,
+    silver_stat=128,
+)
+fig_gd15.update_layout(yaxis_range=[-2000, 2000])
+
+# CS Diff / 15min
+csdiff15 = dh.match_summary_df['csdiff15']
+fig_csdiff15 = constructValueLineChart(
+    csdiff15,
+    'CS Difference',
+    'CS Difference @ 15 Minutes',
+    challenger_stat=2.4,
+    silver_stat=2.1,
+)
+fig_csdiff15.update_layout(yaxis_range=[-50, 50])
 
 
 # Following two functions were modified from https://stackoverflow.com/a/63602391/7247528
@@ -198,7 +238,19 @@ combat_stats_tab = cardBodyWrapper(
 income_stats_tab = cardBodyWrapper(
     dbc.Row([
         dbc.Col([
+            drawText('Placeholder')
+        ], width=3),
+        dbc.Col([
             drawFigure(fig_dpg)
+        ], width=3),
+        dbc.Col([
+            drawFigure(fig_gd15)
+        ], width=3),
+    ], align='center'), 
+    html.Br(),
+    dbc.Row([
+        dbc.Col([
+            drawFigure(fig_csdiff15)
         ], width=3),
         dbc.Col([
             drawFigure(fig_cspm)
@@ -210,7 +262,7 @@ income_stats_tab = cardBodyWrapper(
     # html.Br(),
     # dbc.Row([
     #     dbc.Col([
-    #         drawFigure(fig_vsm)
+    #         drawText('Placeholder')
     #     ], width=3),
     # ], align='center'),
 )
@@ -218,7 +270,21 @@ income_stats_tab = cardBodyWrapper(
 map_control_stats_tab = cardBodyWrapper(
     dbc.Row([
         dbc.Col([
+            drawText('Placeholder')
+        ], width=3),
+        dbc.Col([
+            drawText('Objective Control Ratio')
+        ], width=3),
+        dbc.Col([
             drawFigure(fig_vsm)
+        ], width=3),
+    ], align='center'),
+    dbc.Row([
+        dbc.Col([
+            drawText('Roam Dominance Score')
+        ], width=3),
+        dbc.Col([
+            drawText('Kill Conversion Ratio')
         ], width=3),
     ], align='center'),
 )
